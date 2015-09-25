@@ -35,6 +35,7 @@ private:
 	// Would like to in here (if possible):
 	void setupVAO();
 	void loadBuffer(std::vector<Vec3f>, Vec3f);
+	void reloadMVPUniform(Mat4f);
 
 };
 
