@@ -23,25 +23,19 @@
 #include "MathTools/Vec3f.h"
 #include "MathTools/VectorTools.h"
 #include "Helpers/FileHelper.h"
-#include "OpenGLTools/GLCurve.h"
 #include "OpenGLTools/ShaderTools.h"
-#include "OpenGLTools/GLData.h"
+#include "OpenGLTools/Renderable.h"
 using std::cout;
 using std::endl;
 using std::cerr;
 
-// TODO: consider moving into GLCurve?
-/******************************************************/
 
 Mat4f MVP;
-Mat4f M;
+Mat4f M; // Every model should have it's own Model matrix
 Mat4f V;
 Mat4f P;
-/*****************************************************/
 
-GLData glData;
-
-GLCurve track;
+Renderable track, cart;
 float thetaXRotate, thetaYRotate = 0;
 float mousePreviousY, mousePreviousX  = 0;
 
@@ -54,11 +48,11 @@ void resizeFunc();
 void idleFunc();
 void init();
 void setupVAO();
-void loadBuffer(std::vector<Vec3f>, Vec3f);
+void loadBuffer(Renderable);
 void loadProjectionMatrix();
 void loadModelViewMatrix();
 void setupModelViewProjectionTransform();
-void reloadMVPUniform();
+void reloadMVPUniform(Renderable);
 int main( int, char** );
 void mouseButtonFunc( int button, int state, int x, int y);
 // function declarations
@@ -71,17 +65,17 @@ void mouseButtonFunc( int button, int state, int x, int y)
 	}
 
 	track.setVerts(VectorTools::subdivide(track.getVerts(), 1));
-	loadBuffer(track.getVerts(), track.getColour()); // TODO: may need to find a way to get rid of this
+	loadBuffer(track); // TODO: may need to find a way to get rid of this
 	glutPostRedisplay();
 }
 
 // Right now just a function to test if points are subdividing correctly
 void mouseMotionFunc(int x, int y)
 {
-
+/*
 	std::cout << "x:" << x << "\ny:" << y << "\n\n";
 	std::cout << "previousX:" << mousePreviousX << "\nPreviousY:" << mousePreviousY << "\n\n";
-
+*/
 	//thetaXRotate -= (x - mousePreviousX)/100;
 	thetaYRotate = ((x - mousePreviousX) / WIN_WIDTH) * 360; // May not be necessary
 	mousePreviousY = y;
@@ -92,7 +86,8 @@ void mouseMotionFunc(int x, int y)
 	setupModelViewProjectionTransform();
 
 		// send changes to GPU
-	reloadMVPUniform();
+	reloadMVPUniform(track);
+	reloadMVPUniform(cart);
 	glutPostRedisplay();
 }
 
@@ -101,13 +96,18 @@ void displayFunc()
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
 	// Use our shader
-	glUseProgram( glData.basicProgramID );
+	glUseProgram( track.basicProgramID );
 
 	// Use VAO that holds buffer bindings
 	// and attribute config of buffers
-	glBindVertexArray( glData.vaoID );
-	// Draw Quads, start at vertex 0, draw 4 of them (for a quad)
-	glDrawArrays( GL_LINE_STRIP, 0, track.getVerts().size() );
+	glBindVertexArray( track.vaoID );
+	// Draw line segments, start at vertex 0, draw all verts in the track
+	glDrawArrays( track.getRenderMode(), 0, track.getVerts().size() );
+
+	// Draw the cart
+	glUseProgram( cart.basicProgramID);
+	glBindVertexArray(cart.vaoID);
+	glDrawArrays( cart.getRenderMode(), 0, cart.getVerts().size());
 
 	glutSwapBuffers();
 }
@@ -133,7 +133,8 @@ void resizeFunc( int width, int height )
     glViewport( 0, 0, width, height );
 
     loadProjectionMatrix();
-    reloadMVPUniform();
+    reloadMVPUniform(cart);
+    reloadMVPUniform(track);
 
     glutPostRedisplay();
 }
@@ -169,11 +170,11 @@ void setupModelViewProjectionTransform()
 	MVP = P * V * M; // transforms vertices from right to left (odd huh?)
 }
  
-void reloadMVPUniform()
+void reloadMVPUniform(Renderable toLoad)
 {
-	GLint mvpID = glGetUniformLocation( glData.basicProgramID, "MVP" );
+	GLint mvpID = glGetUniformLocation( toLoad.basicProgramID, "MVP" );
 	
-	glUseProgram( glData.basicProgramID );
+	glUseProgram( toLoad.basicProgramID );
 	glUniformMatrix4fv( 	mvpID,		// ID
 				1,		// only 1 matrix
 				GL_TRUE,	// transpose matrix, Mat4f is row major
@@ -181,12 +182,12 @@ void reloadMVPUniform()
 			);
 }
 
-void setupVAO()
+void setupVAO(Renderable toRender)
 {
-	glBindVertexArray( glData.vaoID );
+	glBindVertexArray( toRender.vaoID );
 
 	glEnableVertexAttribArray( 0 ); // match layout # in shader
-	glBindBuffer( GL_ARRAY_BUFFER, glData.vertBufferID );
+	glBindBuffer( GL_ARRAY_BUFFER, toRender.vertBufferID );
 	glVertexAttribPointer(
 		0,		// attribute layout # above
 		3,		// # of components (ie XYZ )
@@ -197,7 +198,7 @@ void setupVAO()
 	);
 
 	glEnableVertexAttribArray( 1 ); // match layout # in shader
-	glBindBuffer( GL_ARRAY_BUFFER, glData.colorBufferID );
+	glBindBuffer( GL_ARRAY_BUFFER, toRender.colorBufferID );
 	glVertexAttribPointer(
 		1,		// attribute layout # above
 		3,		// # of components (ie XYZ )
@@ -211,23 +212,23 @@ void setupVAO()
 }
 
 // Right now just does a solid colour
-void loadBuffer(std::vector<Vec3f> verts, Vec3f colour)
+void loadBuffer(Renderable toLoad)
 {
 	
-	glBindBuffer( GL_ARRAY_BUFFER, glData.vertBufferID );
+	glBindBuffer( GL_ARRAY_BUFFER, toLoad.vertBufferID );
 	glBufferData(	GL_ARRAY_BUFFER,	
-			sizeof(Vec3f)*verts.size(),	// byte size of Vec3f, 4 of them
-			verts.data(),		// pointer (Vec3f*) to contents of verts
+			sizeof(Vec3f)*toLoad.getVerts().size(),	// byte size of Vec3f, 4 of them
+			toLoad.getVerts().data(),		// pointer (Vec3f*) to contents of verts
 			GL_STATIC_DRAW );	// Usage pattern of GPU buffer
 
 	std::vector<float> colours;
-	for(int i = 0; i < verts.size(); i++){
-		colours.push_back(colour.x());
-		colours.push_back(colour.y());
-		colours.push_back(colour.z());
+	for(int i = 0; i < toLoad.getVerts().size(); i++){
+		colours.push_back(toLoad.getColour().x());
+		colours.push_back(toLoad.getColour().y());
+		colours.push_back(toLoad.getColour().z());
 	}
 
-	glBindBuffer( GL_ARRAY_BUFFER, glData.colorBufferID );
+	glBindBuffer( GL_ARRAY_BUFFER, toLoad.colorBufferID );
 	glBufferData(	GL_ARRAY_BUFFER,
 			sizeof(float)*colours.size(),
 			colours.data(),
@@ -238,20 +239,44 @@ void init()
 {
 	glEnable( GL_DEPTH_TEST );
 
-	// SETUP SHADERS, BUFFERS, VAOs
 
+	// Read in track
 	FileHelper::loadCurveFromFile("startup.vert", track);
+	track.setRenderMode(GL_LINE_STRIP);
+	track.setFragmentShaderPath("Shaders/basic_fs.glsl");
+	track.setVertexShaderPath("Shaders/basic_vs.glsl");
 
-	glData.generateIDs();
+	// Create cart
+	cart.setColour(Vec3f(1.0f, 1.0f, 1.0f));
+	cart.setVerts(std::vector<Vec3f>(
+			{
+		Vec3f(0.0, -1.0, 0.0),
+		Vec3f(0.0, 1.0, 0.0),
+		Vec3f(1.0, 0.0, 0.0)
+			}));
+	cart.setRenderMode(GL_TRIANGLES);
+	cart.setFragmentShaderPath("Shaders/basic_fs.glsl");
+	cart.setVertexShaderPath("Shaders/basic_vs.glsl");
 
 
-	setupVAO();
-	loadBuffer(track.getVerts(), track.getColour());
+	// SETUP SHADERS, BUFFERS, VAOs
+	// For Track:
+	track.generateIDs();
+	setupVAO(track);
+	loadBuffer(track);
+
+	cout << "Track: " << track.vertBufferID << "\n";
+	// For Cart:
+	cart.generateIDs();
+	setupVAO(cart);
+	loadBuffer(cart);
+	cout << "Cart: " << cart.vertBufferID << "\n";
 
     loadModelViewMatrix();
     loadProjectionMatrix();
 	setupModelViewProjectionTransform();
-	reloadMVPUniform();
+	reloadMVPUniform(track);
+	reloadMVPUniform(cart);
 }
 
 int main( int argc, char** argv )
@@ -285,7 +310,8 @@ int main( int argc, char** argv )
 	glutMainLoop();
 
 	// clean up after loop
-	glData.deleteIDs();
+	track.deleteIDs();
+	cart.deleteIDs();
 
 	return 0;
 }

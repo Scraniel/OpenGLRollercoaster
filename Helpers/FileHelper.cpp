@@ -12,7 +12,7 @@
  * 1.0 1.0 1.0		// Second line is always the colour to render the curve
  * -1.0 1.0 0.0		// The remaining n -1 lines are the vertices of the curve
  */
-void FileHelper::loadCurveFromFile(const char* file, GLCurve & curve){
+void FileHelper::loadCurveFromFile(const char* file, Renderable & curve){
 
 	char buffer[50];
 	FILE* fp;
