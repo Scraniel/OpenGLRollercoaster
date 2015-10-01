@@ -9,6 +9,8 @@
 
 Renderable::Renderable() {
 	// TODO Auto-generated constructor stub
+	MVP = IdentityMatrix();
+	M = IdentityMatrix();
 
 }
 

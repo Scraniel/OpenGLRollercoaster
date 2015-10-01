@@ -64,3 +64,8 @@ Vec3f VectorTools::affineCombination(Vec3f firstPoint, Vec3f secondPoint, float 
 {
 	return firstPoint + ((secondPoint - firstPoint) * proportion);
 }
+
+double VectorTools::length(Vec3f direction)
+{
+	return sqrt(pow(direction.x(), 2) + pow(direction.y(), 2) + pow(direction.z(), 2));
+}

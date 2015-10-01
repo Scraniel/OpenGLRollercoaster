@@ -11,6 +11,7 @@
 #include <GL/glew.h> // include BEFORE glut
 #include <GL/glut.h>
 #include "../MathTools/Mat4f.h"
+#include "../MathTools/OpenGLMatrixTools.h"
 #include "ShaderTools.h"
 #include "../MathTools/Vec3f.h"
 
@@ -29,6 +30,7 @@ public:
 	void setVertexShaderPath(std::string);
 	void setFragmentShaderPath(std::string);
 
+
 	// Will most likely move to private, just for incremental testing
 		GLuint vaoID;
 		GLuint basicProgramID;
@@ -36,6 +38,8 @@ public:
 		// Could store these two in an array GLuint[]
 		GLuint vertBufferID;
 		GLuint colorBufferID;
+
+		Mat4f M, MVP;
 
 		void generateIDs();
 		void deleteIDs();
@@ -47,7 +51,7 @@ private:
 	int renderMode; // GLEnum that tells the GPU how to render this object, eg. GL_LINES
 	std::string fragmentShaderPath, vertexShaderPath;
 
-	Mat4f M;
+
 };
 
 #endif /* GLCURVE_H_ */

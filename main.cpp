@@ -39,6 +39,10 @@ Renderable track, cart;
 float thetaXRotate, thetaYRotate = 0;
 float mousePreviousY, mousePreviousX  = 0;
 
+// TODO: store in cart?
+int currentIndex = 0;
+Vec3f currentPosition;
+
 
 int WIN_WIDTH = 800, WIN_HEIGHT = 600;
 
@@ -57,15 +61,158 @@ int main( int, char** );
 void mouseButtonFunc( int button, int state, int x, int y);
 // function declarations
 
+// TODO: move into cart (and create cart class which inherits from renderable)
+void moveCart(float distance)
+{
+	int nextIndex = (currentIndex + 1) % track.getVerts().size();
+	Vec3f previousPoint = track.getVerts().at(currentIndex);
+	Vec3f nextPoint = track.getVerts().at(nextIndex);
+	Vec3f toGo;
+	Vec3f previousToNext = nextPoint - previousPoint;
+	float distanceTravelled = (nextPoint - currentPosition).length();
+
+	// We are on the correct line segment
+	if( distanceTravelled >= distance)
+	{
+		toGo = (previousToNext * (1.0f/previousToNext.length())) * distance;
+
+		// Special case: The cart needs to land EXACTLY on the next point
+		if(distanceTravelled == distance)
+		{
+			currentIndex = nextIndex;
+		}
+	}
+	// We're not on the correct line segment; find it!
+	else
+	{
+
+		// Look through each segment until we've accumulated enough distance
+		do
+		{
+			currentIndex = nextIndex;
+			nextIndex = (nextIndex + 1) % track.getVerts().size();
+			previousPoint = track.getVerts().at(currentIndex);
+			nextPoint = track.getVerts().at(nextIndex);
+			previousToNext = nextPoint - previousPoint;
+
+			distanceTravelled +=  previousToNext.length();
+
+
+		}while(distanceTravelled < distance);
+
+		// This is necessary because we need to know how much distance was traversed
+		// on every line segment BUT the one we're on
+		distanceTravelled -= previousToNext.length();
+
+		// We've found the right segment!
+		// Our new position is some percentage along this segment. To find that percentage,
+		// subtract how far we went on every line segment BUT this one from how far we want to go
+		// (which gives us how much further we need to go) and divide it by the length of the
+		// current segment
+		Vec3f newPosition = previousPoint + (previousToNext * (1.0f/previousToNext.length())) * (distance - distanceTravelled);
+
+
+		toGo = newPosition - currentPosition;
+	}
+
+	cart.M = cart.M * TranslateMatrix(toGo.x(), toGo.y(), toGo.z());
+	currentPosition = currentPosition + toGo;
+
+	setupModelViewProjectionTransform();
+
+	// send changes to GPU
+	reloadMVPUniform(cart);
+}
+
+// Fixes a curve so that it's points are all a fixed distance from one another
+// NOTE: the length of the curve should be evenly divided by distance
+std::vector<Vec3f> arcLengthReparameterize(float distance, std::vector<Vec3f> curve)
+{
+	// find the length of the curve (TODO: move into track (and create a track class))
+	float total = 0;
+	for(int i = 0; i < curve.size()-1; i++)
+	{
+		 Vec3f previous = curve.at(i);
+		 Vec3f next = curve.at(i+1);
+
+		 total += (next - previous).length();
+	}
+	if(fmodf(total, distance) != 0)
+	{
+		cout << "ERROR: The distance chosen does not divide evenly into the curve!\n";
+		return curve;
+	}
+
+	std::vector<Vec3f> reparameterizedCurve;
+	Vec3f currentPosition = curve.at(0);
+	reparameterizedCurve.push_back(currentPosition);
+
+	for(int previousIndex = 0; previousIndex < curve.size() - 1; previousIndex++)
+	{
+
+		int nextIndex = previousIndex + 1;
+		Vec3f previousPoint = curve.at(previousIndex);
+
+		Vec3f nextPoint = curve.at(nextIndex);
+		Vec3f toGo;
+		Vec3f previousToNext = nextPoint - previousPoint;
+		float distanceTravelled = (nextPoint - currentPosition).length();
+
+		// We are on the correct line segment
+		if( distanceTravelled >= distance)
+		{
+			toGo = (previousToNext * (1.0f/previousToNext.length())) * distance;
+			reparameterizedCurve.push_back(currentPosition + toGo);
+		}
+		// We're not on the correct line segment; find it!
+		else
+		{
+
+			// Look through each segment until we've accumulated enough distance
+			do
+			{
+				previousIndex = nextIndex;
+				nextIndex = nextIndex + 1;
+				previousPoint = curve.at(previousIndex);
+				nextPoint = curve.at(nextIndex);
+				previousToNext = nextPoint - previousPoint;
+
+				distanceTravelled +=  previousToNext.length();
+
+
+			}while(distanceTravelled < distance);
+
+			// This is necessary because we need to know how much distance was traversed
+			// on every line segment BUT the one we're on
+			distanceTravelled -= previousToNext.length();
+
+			// We've found the right segment!
+			// Our new position is some percentage along this segment. To find that percentage,
+			// subtract how far we went on every line segment BUT this one from how far we want to go
+			// (which gives us how much further we need to go) and divide it by the length of the
+			// current segment
+			Vec3f newPosition = previousPoint + (previousToNext * (1.0f/previousToNext.length())) * (distance - distanceTravelled);
+
+
+			reparameterizedCurve.push_back(newPosition);
+		}
+	}
+
+	return reparameterizedCurve;
+}
+
 void mouseButtonFunc( int button, int state, int x, int y)
 {
 	if(button != GLUT_RIGHT_BUTTON || state != GLUT_DOWN)
 	{
+
 		return;
 	}
 
+
 	track.setVerts(VectorTools::subdivide(track.getVerts(), 1));
 	loadBuffer(track); // TODO: may need to find a way to get rid of this
+
 	glutPostRedisplay();
 }
 
@@ -122,6 +269,9 @@ void idleFunc()
 	// send changes to GPU
 	//reloadMVPUniform();
 	
+	// testing cart motion
+	moveCart(0.1);
+
 	glutPostRedisplay();
 }
 
@@ -167,7 +317,8 @@ void loadModelViewMatrix()
 
 void setupModelViewProjectionTransform()
 {
-	MVP = P * V * M; // transforms vertices from right to left (odd huh?)
+	track.MVP = P * V * M * track.M; // transforms vertices from right to left (odd huh?)
+	cart.MVP = P * V * M * cart.M;
 }
  
 void reloadMVPUniform(Renderable toLoad)
@@ -178,7 +329,7 @@ void reloadMVPUniform(Renderable toLoad)
 	glUniformMatrix4fv( 	mvpID,		// ID
 				1,		// only 1 matrix
 				GL_TRUE,	// transpose matrix, Mat4f is row major
-				MVP.data()	// pointer to data in Mat4f
+				toLoad.MVP.data()	// pointer to data in Mat4f
 			);
 }
 
@@ -246,18 +397,30 @@ void init()
 	track.setFragmentShaderPath("Shaders/basic_fs.glsl");
 	track.setVertexShaderPath("Shaders/basic_vs.glsl");
 
+	// After reading in the track, subdivide it so it's nice and smooth
+	for(int i = 0; i < 4; i++)
+	{
+		track.setVerts(VectorTools::subdivide(track.getVerts(), 1));
+		loadBuffer(track); // TODO: may need to find a way to get rid of this
+	}
+	// Reparameterize the arc length!
+	track.setVerts(arcLengthReparameterize(0.1, track.getVerts()));
+
+
 	// Create cart
+
+	Vec3f firstTrackPoint = track.getVerts().at(0);
 	cart.setColour(Vec3f(1.0f, 1.0f, 1.0f));
 	cart.setVerts(std::vector<Vec3f>(
 			{
-		Vec3f(0.0, -1.0, 0.0),
-		Vec3f(0.0, 1.0, 0.0),
-		Vec3f(1.0, 0.0, 0.0)
+		firstTrackPoint + Vec3f(-0.25, -0.25, 0.0),
+		firstTrackPoint,
+		firstTrackPoint + Vec3f(0.25, -0.25, 0.0)
 			}));
 	cart.setRenderMode(GL_TRIANGLES);
 	cart.setFragmentShaderPath("Shaders/basic_fs.glsl");
 	cart.setVertexShaderPath("Shaders/basic_vs.glsl");
-
+	currentPosition = firstTrackPoint;
 
 	// SETUP SHADERS, BUFFERS, VAOs
 	// For Track:
@@ -265,12 +428,10 @@ void init()
 	setupVAO(track);
 	loadBuffer(track);
 
-	cout << "Track: " << track.vertBufferID << "\n";
 	// For Cart:
 	cart.generateIDs();
 	setupVAO(cart);
 	loadBuffer(cart);
-	cout << "Cart: " << cart.vertBufferID << "\n";
 
     loadModelViewMatrix();
     loadProjectionMatrix();
@@ -281,7 +442,7 @@ void init()
 
 int main( int argc, char** argv )
 {
-    glutInit( &argc, argv );
+	glutInit( &argc, argv );
 	// Setup FB configuration
 	glutInitDisplayMode( GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH );
 	
