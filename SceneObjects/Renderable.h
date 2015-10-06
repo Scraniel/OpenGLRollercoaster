@@ -12,7 +12,7 @@
 #include <GL/glut.h>
 #include "../MathTools/Mat4f.h"
 #include "../MathTools/OpenGLMatrixTools.h"
-#include "ShaderTools.h"
+#include "../OpenGLTools/ShaderTools.h"
 #include "../MathTools/Vec3f.h"
 
 class Renderable {
@@ -20,7 +20,7 @@ public:
 	Renderable();
 	virtual ~Renderable();
 	std::vector<Vec3f> getVerts();
-	void setVerts(std::vector<Vec3f>);
+	virtual void setVerts(std::vector<Vec3f>);
 	Vec3f getColour();
 	void setColour(Vec3f);
 	int getRenderMode();

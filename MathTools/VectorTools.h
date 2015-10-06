@@ -17,6 +17,7 @@ public:
 	static std::vector<Vec3f> subdivide(std::vector<Vec3f>, int);
 	static Vec3f affineCombination(Vec3f firstPoint, Vec3f secondPoint, float proportion);
 	static double length(Vec3f);
+	static std::vector<Vec3f> arcLengthReparameterize(float , std::vector<Vec3f> );
 };
 
 #endif /* MATHTOOLS_VECTORTOOLS_H_ */

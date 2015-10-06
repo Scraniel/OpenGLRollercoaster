@@ -8,7 +8,7 @@
 #ifndef HELPERS_FILEHELPER_H_
 #define HELPERS_FILEHELPER_H_
 
-#include "../OpenGLTools/Renderable.h"
+#include "../SceneObjects/Renderable.h"
 class FileHelper{
 public:
 	static void loadCurveFromFile(const char *, Renderable &);
