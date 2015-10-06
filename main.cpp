@@ -261,7 +261,7 @@ void init()
 	loadBuffer(track); // TODO: may need to find a way to get rid of this
 
 	// Reparameterize the arc length!
-	//track.setVerts(VectorTools::arcLengthReparameterize(track.getVerts().size(), track.getVerts()));
+	track.setVerts(VectorTools::arcLengthReparameterize(track.getVerts().size(), track.getVerts()));
 
 
 	// Create cart

@@ -96,7 +96,7 @@ std::vector<Vec3f> VectorTools::arcLengthReparameterize(float factor, std::vecto
 	std::vector<Vec3f> reparameterizedCurve;
 	Vec3f currentPosition = curve.at(0);
 	reparameterizedCurve.push_back(currentPosition);
-
+	bool endOfCurve = false;
 	int previousIndex = 0;
 	while(previousIndex < curve.size() - 1)
 	{
@@ -117,6 +117,7 @@ std::vector<Vec3f> VectorTools::arcLengthReparameterize(float factor, std::vecto
 			reparameterizedCurve.push_back(currentPosition);
 		}
 		// We're not on the correct line segment; find it!
+
 		else
 		{
 
@@ -128,6 +129,7 @@ std::vector<Vec3f> VectorTools::arcLengthReparameterize(float factor, std::vecto
 
 				if(nextIndex >= curve.size())
 				{
+					endOfCurve = true;
 					break;
 				}
 				previousPoint = curve.at(previousIndex);
@@ -139,21 +141,22 @@ std::vector<Vec3f> VectorTools::arcLengthReparameterize(float factor, std::vecto
 
 			}while(distanceTravelled < distance);
 
-			// This is necessary because we need to know how much distance was traversed
-			// on every line segment BUT the one we're on
-			distanceTravelled -= previousToNext.length();
+			if(!endOfCurve){
+				// This is necessary because we need to know how much distance was traversed
+				// on every line segment BUT the one we're on
+				distanceTravelled -= previousToNext.length();
 
-			// We've found the right segment!
-			// Our new position is some percentage along this segment. To find that percentage,
-			// subtract how far we went on every line segment BUT this one from how far we want to go
-			// (which gives us how much further we need to go) and divide it by the length of the
-			// current segment
-			currentPosition = previousPoint + (previousToNext * (1.0f/previousToNext.length())) * (distance - distanceTravelled);
+				// We've found the right segment!
+				// Our new position is some percentage along this segment. To find that percentage,
+				// subtract how far we went on every line segment BUT this one from how far we want to go
+				// (which gives us how much further we need to go) and divide it by the length of the
+				// current segment
+				currentPosition = previousPoint + (previousToNext * (1.0f/previousToNext.length())) * (distance - distanceTravelled);
 
 
-			reparameterizedCurve.push_back(currentPosition);
+				reparameterizedCurve.push_back(currentPosition);
+			}
 		}
 	}
-
 	return reparameterizedCurve;
 }
