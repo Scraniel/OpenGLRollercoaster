@@ -26,14 +26,11 @@ std::vector<Vec3f> VectorTools::subdivide(std::vector<Vec3f> points, int depth)
 
 	std::vector<Vec3f> newPoints;
 
-	// we don't want the first point to creep up, so we add it as is
-	newPoints.push_back(points.at(0));
-
 	// For each pair of points, we create a new point halfway between them
-	for(int i = 0; i < points.size() - 1; i++)
+	for(unsigned int i = 0; i < points.size(); i++)
 	{
 		Vec3f firstPoint = points.at(i);
-		Vec3f secondPoint = points.at(i+1);
+		Vec3f secondPoint = points.at((i+1)%points.size());
 
 		Vec3f inBetweenPoint = affineCombination(firstPoint, secondPoint, 0.5);
 
@@ -41,14 +38,11 @@ std::vector<Vec3f> VectorTools::subdivide(std::vector<Vec3f> points, int depth)
 		firstPoint = affineCombination(firstPoint, inBetweenPoint, 0.5);
 		inBetweenPoint = affineCombination(inBetweenPoint, secondPoint, 0.5);
 
-		if(i != 0){
-			newPoints.push_back(firstPoint);
-		}
+
+		newPoints.push_back(firstPoint);
+
 		newPoints.push_back(inBetweenPoint);
 	}
-
-	// We don't want the last point to creep up either, so we add it as is
-	newPoints.push_back(points.at(points.size() - 1));
 
 	return subdivide(newPoints, depth - 1);
 
@@ -75,15 +69,16 @@ double VectorTools::length(Vec3f direction)
 // NOTE: factor should be larger than the number of vertices in the original curve
 std::vector<Vec3f> VectorTools::arcLengthReparameterize(float factor, std::vector<Vec3f> curve)
 {
+	/*
 	if(factor < curve.size())
 	{
 		std::cerr << "ERROR: The factor chosen: " << factor << ", is smaller than the number of vertices in the curve: " << curve.size() <<"\n";
 		return curve;
 	}
-
+*/
 	// find the length of the curve (TODO: move into track (and create a track class))
 	float total = 0;
-	for(int i = 0; i < curve.size()-1; i++)
+	for(unsigned int i = 0; i < curve.size()-1; i++)
 	{
 		 Vec3f previous = curve.at(i);
 		 Vec3f next = curve.at(i+1);
@@ -97,11 +92,11 @@ std::vector<Vec3f> VectorTools::arcLengthReparameterize(float factor, std::vecto
 	Vec3f currentPosition = curve.at(0);
 	reparameterizedCurve.push_back(currentPosition);
 	bool endOfCurve = false;
-	int previousIndex = 0;
+	unsigned int previousIndex = 0;
 	while(previousIndex < curve.size() - 1)
 	{
 
-		int nextIndex = previousIndex + 1;
+		unsigned int nextIndex = previousIndex + 1;
 		Vec3f previousPoint = curve.at(previousIndex);
 
 		Vec3f nextPoint = curve.at(nextIndex);

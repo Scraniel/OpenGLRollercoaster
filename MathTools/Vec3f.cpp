@@ -41,6 +41,8 @@ Vec3f Vec3f::crossProduct( Vec3f const & other ) const
 
 Vec3f Vec3f::normalized() const
 {
+	if(this->x() == 0 && this->y() == 0 && this->z() == 0)
+		return *this;
 	Vec3f v( *this );
 	v.normalize();
 	return v;

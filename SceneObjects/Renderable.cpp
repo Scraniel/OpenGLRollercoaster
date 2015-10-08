@@ -29,6 +29,20 @@ void Renderable::setVerts(std::vector<Vec3f> newVerts)
 	verts = newVerts;
 }
 
+std::vector<float> Renderable::getColours()
+{
+	std::vector<float> colours;
+
+	for(unsigned int i = 0; i < verts.size(); i++)
+	{
+		colours.push_back(colour.x());
+		colours.push_back(colour.y());
+		colours.push_back(colour.z());
+	}
+
+	return colours;
+}
+
 Vec3f Renderable::getColour()
 {
 	return colour;

@@ -10,8 +10,9 @@
 Cart::Cart() {
 	// TODO Auto-generated constructor stub
 	minSpeed = 0.01;
-	slowFactor = 0.1;
+	slowFactor = 0.99;
 	currentIndex = 0;
+	lastPolled = Vec3f(0,0,0);
 }
 
 Cart::Cart(Vec3f currentPosition, Track track)
@@ -20,7 +21,8 @@ Cart::Cart(Vec3f currentPosition, Track track)
 	this->currentPosition = currentPosition;
 	currentIndex = 0;
 	minSpeed = 0.01;
-	slowFactor = 0.5;
+	slowFactor = 0.9;
+	lastPolled = Vec3f(0,0,0);
 }
 
 Cart::~Cart() {
@@ -87,63 +89,72 @@ void Cart::move()
 		toGo = newPosition - currentPosition;
 	}
 
-	M = M * TranslateMatrix(toGo.x(), toGo.y(), toGo.z());
+	M = Cart::calcModelMatrix(newPosition, track, currentIndex, getSpeed());
 	currentPosition = currentPosition + toGo;
 }
 
-// Somewhat coupled to cart, not sure if that's a problem
-Mat4f Cart::calcModelMatrix()
+Mat4f Cart::calcModelMatrix(Vec3f whereToGo, Track curve, int closestIndex, float currentSpeed)
 {
-
 	// Need 3 points to find oscilating circle at this point
 	Vec3f previousPoint, currentPoint, nextPoint, tangent, normal, binormal;
-	currentPoint = track.getVerts().at(currentIndex);
-	nextPoint = track.getVerts().at((currentIndex+1) % track.getVerts().size());
-	if(currentIndex == 0)
+	currentPoint = curve.getVerts().at(closestIndex);
+	nextPoint = curve.getVerts().at((closestIndex+1) % curve.getVerts().size());
+
+	if(closestIndex == 0)
 	{
-		previousPoint = track.getVerts().at(track.getVerts().size() - 1);
+		previousPoint = curve.getVerts().at(curve.getVerts().size() - 1);
 	}
 	else
 	{
-		previousPoint = track.getVerts().at(currentIndex - 1);
+		previousPoint = curve.getVerts().at(closestIndex - 1);
 	}
+
+	/*
+	 * Get Equidistance points
+	 */
+	float previousToCurrentLength = (previousPoint - currentPoint).length();
+	float nextToCurrentLength = (nextPoint - currentPoint).length();
+	float closestToMid = fmin(previousToCurrentLength, nextToCurrentLength);
+	previousPoint = VectorTools::affineCombination(currentPoint, previousPoint,  closestToMid/previousToCurrentLength);
+	nextPoint = VectorTools::affineCombination(currentPoint, nextPoint,  closestToMid/nextToCurrentLength);
 
 	// The tangent to the curve is ~ the vector to the next point since
 	// the arcs are so small
-	Vec3f previousToNext = nextPoint - previousPoint;
-	tangent = previousToNext.normalized();
+	Vec3f currentToNext = nextPoint - currentPoint;
+	tangent = currentToNext.normalized();
 
 	// The normal is pointing straight down
-	Vec3f numerator = nextPoint - (currentPoint * 2) + previousPoint;
+	Vec3f numerator = (nextPoint - (currentPoint * 2.0)) + previousPoint;
 	normal = numerator.normalized();
-
-
-	binormal = tangent.crossProduct(normal);
-
-	// Need to change the axes so they're all orthogonal to one another
-	tangent = binormal.crossProduct(normal);
 
 	// Accounting for centripital force
 	float h = (numerator * 0.5).length();
 	float c = (nextPoint - previousPoint).length();
 	float r = ((c * c) + (4 * h * h)) / (8 * h);
-	float s = getSpeed();
+	float s = currentSpeed;
 	float force = (s * s)/r;
+
 
 	// Accounting for gravity
 
 	normal = (normal * force) + Vec3f(0, g, 0);
+	std::cout << normal << "\n";
+	normal.normalize();
+	std::cout << normal << "\nEND\n";
+
+	binormal = normal.crossProduct(tangent).normalized();
+
+	// Need to change the axes so they're all orthogonal to one another
+	tangent = binormal.crossProduct(normal).normalized();
 
 	Mat4f total(
 			{
-			tangent.x(), normal.x(), binormal.x(), 0,
-			tangent.y(), normal.y(), binormal.y(), 0,
-			tangent.z(), normal.z(), binormal.z(), 0,
+			tangent.x(), normal.x(), binormal.x(), whereToGo.x(),
+			tangent.y(), normal.y(), binormal.y(), whereToGo.y(),
+			tangent.z(), normal.z(), binormal.z(), whereToGo.z(),
 			0,			 0,			 0,			   1
 			}
 			);
-
-	std::cout << total << "\n";
 
 	return total;
 
@@ -152,6 +163,10 @@ Mat4f Cart::calcModelMatrix()
 void Cart::setCurrentPosition(Vec3f currentPosition)
 {
 	this->currentPosition = currentPosition;
+	if(lastPolled.length() == 0)
+	{
+		lastPolled = currentPosition;
+	}
 }
 
 void Cart::setTrack(Track track)
@@ -170,13 +185,20 @@ float Cart::getSpeed()
 	// We're in the 'physics' portion of the track
 	case Track::middle:
 
-		currentSpeed = sqrt(2.0 * g * (track.getMaxHeight() - track.getHeight(currentPosition))) / 100;
+		currentSpeed = sqrt(2.0 * g * (track.getMaxHeight()-track.getHeight(currentPosition)));
 		break;
 	// We're in the 'slow down' portion of the track
 	case Track::end:
-		currentSpeed = currentSpeed = fmax(minSpeed, currentSpeed * slowFactor);
+		currentSpeed = fmax(minSpeed, currentSpeed * slowFactor);
 		break;
 	}
 
 	return currentSpeed;
+}
+
+float Cart::getPositionDifference()
+{
+	float distance = (lastPolled - currentPosition).length();
+	lastPolled = currentPosition;
+	return distance;
 }

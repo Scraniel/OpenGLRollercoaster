@@ -23,17 +23,18 @@ public:
 	virtual ~Track();
 	float getLength() const;
 	virtual void setVerts(std::vector<Vec3f>);
+	virtual std::vector<float> getColours();
 	trackSegment getTrackSegment(int);
 	float getHeight(Vec3f);
 	float getMaxHeight();
-
+	int beginningIndex, middleIndex, endIndex; // indices of where each segment of the track starts
 
 private:
 	void calculateLength();
 	void partitionTrack();
 	void calculateMinAndMaxPoints();
 	float length, maxHeight;
-	int beginningIndex, middleIndex, endIndex; // indices of where each segment of the track starts
+
 	Vec3f minPoint, maxPoint;
 };
 

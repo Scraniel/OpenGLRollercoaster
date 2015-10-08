@@ -35,7 +35,7 @@ void Track::calculateLength()
 {
 	length = 0;
 	std::vector<Vec3f> verts = getVerts();
-	for(int i = 0; i < verts.size()-1; i++)
+	for(unsigned int i = 0; i < verts.size()-1; i++)
 	{
 		 Vec3f previous = verts.at(i);
 		 Vec3f next = verts.at(i+1);
@@ -55,22 +55,22 @@ Track::trackSegment Track::getTrackSegment(int index)
 		return middle;
 	}
 
-	return end;
+	return beginning;
 }
 
 void Track::partitionTrack()
 {
 	beginningIndex = 0;
-	endIndex = getVerts().size();
+	endIndex = getVerts().size()*(8./9.);
 
 }
 
 void Track::calculateMinAndMaxPoints()
 {
 	middleIndex = 0;
-	minPoint = maxPoint = Vec3f(0,0,0);
+	minPoint = maxPoint = getVerts().at(0);
 	Vec3f current;
-	for(int i = 0; i < getVerts().size(); i++)
+	for(unsigned int i = 0; i < getVerts().size(); i++)
 	{
 		current = getVerts().at(i);
 		if(current.y() < minPoint.y())
@@ -97,4 +97,27 @@ float Track::getHeight(Vec3f position)
 float Track::getMaxHeight()
 {
 	return maxHeight;
+}
+
+std::vector<float> Track::getColours()
+{
+	std::vector<float> colours;
+	for(int i = 0; i < middleIndex; i++){
+		colours.push_back(0);
+		colours.push_back(0);
+		colours.push_back(1);
+	}
+	for(unsigned int i = middleIndex; i < endIndex; i++){
+		colours.push_back(getColour().x());
+		colours.push_back(getColour().y());
+		colours.push_back(getColour().z());
+	}
+	for(unsigned int i = endIndex; i < getVerts().size(); i++){
+		colours.push_back(0);
+		colours.push_back(1);
+		colours.push_back(1);
+	}
+
+
+	return colours;
 }

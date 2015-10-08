@@ -10,6 +10,7 @@
 
 #include "Renderable.h"
 #include "Track.h"
+#include "../MathTools/VectorTools.h"
 
 class Cart: public Renderable {
 public:
@@ -19,13 +20,17 @@ public:
 	void move();
 	void setTrack(Track);
 	void setCurrentPosition(Vec3f);
-private:
-	float getSpeed();
-	Mat4f calcModelMatrix();
-	const float g = 9.81;
-	Track track;
+
+	constexpr static float g = 0.001;
+	static Mat4f calcModelMatrix(Vec3f, Track, int, float);
 	int currentIndex;
-	Vec3f currentPosition;
+	float getSpeed();
+	float getPositionDifference();
+private:
+
+	Track track;
+
+	Vec3f currentPosition, lastPolled;
 	float minSpeed, slowFactor, currentSpeed;
 };
 
