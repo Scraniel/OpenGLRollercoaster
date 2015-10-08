@@ -1,0 +1,42 @@
+/*****************************************************************************************************/
+CPSC 587 - Daniel Lewis - 10076890
+
+TA: Andrew Owens - Tutorial Section: T02
+/*****************************************************************************************************/
+
+The majority of the math in this assignment is thanks to the wonderful laws of conservation of energy.
+Kinetic energy is 0.5 * m * v^2, where m is the mass and v is the velocity of the object in question,
+and potential energy is m * g * h, where m is mass again, g is the accelleration due to gravity, and
+h is the height of the object. Solving for velocity, we end up with v = sqrt(2 * g * h). The one
+assumption that is made here is that we are dealing with a frictionless system, because otherwise
+some energy would be lost due to friction. This is helpful because as long as we have the height of
+our cart on the track, we can calculate the instantaneous velocity of it as well! This is basically
+all that was needed for the first part of the assignment, ie. 'bead on a wire'. I basically just ask
+the cart how high on the track it is, calculate the velocity at that point, and then voila, I now
+know how far along the track to move it.
+
+For the second part, ie. orienting the cart properly, some additional math is required. First is
+understanding the forces that are acting on the cart. The first and most obvious is gravity. The
+second is a force that is applied on the cart due to it accelerating around corners: centripetal
+force. The acceleration inwards is proportional to v^2 / r, where v is the velocity and r is the
+radius of the oscilating circle created by the curve at that point. F = ma, and since we're assuming
+m = 0, we're done! All we need to calculate the force felt inwards is the velocity (which we have from
+the previous paragraph), and the radius of the oscilating circle at that point on the curve. This r
+can be calculated using 3 points on the curve, p1, p2, and p3. p2 is the point we are currently on,
+p1 is the point immediately prior, and p3 is the point afterwards. Note that | p1 - p2 | == | p2 - p3 |
+must be true in order for this to work. r can be calculated as follows: r = (c^2 + 4h^2)/8h, where
+c = | p3 - p1 | and h = | 0.5 * (p3 - 2 * p2 + p1) |. This works because r is equidistant from all 3
+points due to the fact that we're dealing with a circle! Now that we have this information, we can
+generate a 'Frenet Frame' by performing a change of coordinate systems. We need to calculate a normal
+vector (n) which points up, a tangent vector (t) which is tangential to the oscilating circle, and a
+binormal vector (b) which points to the right of the cart. Since the arc lengths are so small, t is
+approximately equal to p3 - p2 (normalized). The normal vector is just p3 - 2 * p2 + p1 (again
+normalized), multiplied by centripetal force (calculated earlier as v^2 / r) and with gravity added in.
+b just needs to be orthogonal to t and n, so b = t x n. We're not quite done, because all of these 
+vectors need to be orthogonal for this to work. Therefore, t = b x n. Now we just back these three
+vectors into a 4x4 matrix [T N B P2], with the final row padded with [0 0 0 1]. That's basically it,
+this matrix acts as the model matrix for our cart, and when multiplied in will transform our cart to
+properly counteract the forces acting upon it from gravity and centripetal force.
+/*****************************************************************************************************/
+  
+
